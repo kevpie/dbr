@@ -107,6 +107,13 @@ func exec(ctx context.Context, runner runner, log EventReceiver, builder Builder
 		})
 	}()
 
+	if ctx == context.Background() {
+		logCtx, ok := log.(context.Context)
+		if ok {
+			ctx = logCtx
+		}
+	}
+
 	result, err := runner.ExecContext(ctx, query, value...)
 	if err != nil {
 		return result, log.EventErrKv("dbr.exec.exec", err, kvs{
@@ -137,6 +144,13 @@ func query(ctx context.Context, runner runner, log EventReceiver, builder Builde
 			"sql": query,
 		})
 	}()
+
+	if ctx == context.Background() {
+		logCtx, ok := log.(context.Context)
+		if ok {
+			ctx = logCtx
+		}
+	}
 
 	rows, err := runner.QueryContext(ctx, query, value...)
 	if err != nil {
