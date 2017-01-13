@@ -1,6 +1,9 @@
 package dbr
 
-import "database/sql"
+import (
+	"database/sql"
+	"context"
+)
 
 // Tx is a transaction for the given Session
 type Tx struct {
@@ -11,7 +14,18 @@ type Tx struct {
 
 // Begin creates a transaction for the given session
 func (sess *Session) Begin() (*Tx, error) {
-	tx, err := sess.Connection.Begin()
+	return sess.BeginTx(context.Background(), &sql.TxOptions{})
+}
+
+func (sess *Session) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+	ctxLog := FromContext(ctx)
+	if ctxLog == nil {
+		ctx = WithValue(ctx, sess)
+	} else {
+		sess.EventReceiver = ctxLog
+	}
+
+	tx, err := sess.Connection.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, sess.EventErr("dbr.begin.error", err)
 	}
@@ -23,6 +37,7 @@ func (sess *Session) Begin() (*Tx, error) {
 		Tx:            tx,
 	}, nil
 }
+
 
 // Commit finishes the transaction
 func (tx *Tx) Commit() error {

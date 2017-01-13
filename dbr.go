@@ -86,6 +86,13 @@ type runner interface {
 }
 
 func exec(ctx context.Context, runner runner, log EventReceiver, builder Builder, d Dialect) (sql.Result, error) {
+	ctxLog := FromContext(ctx)
+	if ctxLog == nil {
+		ctx = WithValue(ctx, log)
+	} else {
+		log = ctxLog
+	}
+
 	i := interpolator{
 		Buffer:       NewBuffer(),
 		Dialect:      d,
@@ -107,13 +114,6 @@ func exec(ctx context.Context, runner runner, log EventReceiver, builder Builder
 		})
 	}()
 
-	if ctx == context.Background() {
-		logCtx, ok := log.(context.Context)
-		if ok {
-			ctx = logCtx
-		}
-	}
-
 	result, err := runner.ExecContext(ctx, query, value...)
 	if err != nil {
 		return result, log.EventErrKv("dbr.exec.exec", err, kvs{
@@ -124,6 +124,13 @@ func exec(ctx context.Context, runner runner, log EventReceiver, builder Builder
 }
 
 func query(ctx context.Context, runner runner, log EventReceiver, builder Builder, d Dialect, dest interface{}) (int, error) {
+	ctxLog := FromContext(ctx)
+	if ctxLog == nil {
+		ctx = WithValue(ctx, log)
+	} else {
+		log = ctxLog
+	}
+
 	i := interpolator{
 		Buffer:       NewBuffer(),
 		Dialect:      d,
@@ -144,13 +151,6 @@ func query(ctx context.Context, runner runner, log EventReceiver, builder Builde
 			"sql": query,
 		})
 	}()
-
-	if ctx == context.Background() {
-		logCtx, ok := log.(context.Context)
-		if ok {
-			ctx = logCtx
-		}
-	}
 
 	rows, err := runner.QueryContext(ctx, query, value...)
 	if err != nil {

@@ -1,5 +1,9 @@
 package dbr
 
+import "context"
+
+type eventKey struct{}
+
 // EventReceiver gets events from dbr methods for logging purposes
 type EventReceiver interface {
 	Event(eventName string)
@@ -8,6 +12,18 @@ type EventReceiver interface {
 	EventErrKv(eventName string, err error, kvs map[string]string) error
 	Timing(eventName string, nanoseconds int64)
 	TimingKv(eventName string, nanoseconds int64, kvs map[string]string)
+}
+
+func FromContext(ctx context.Context) EventReceiver {
+	log, ok := ctx.Value(eventKey{}).(EventReceiver)
+	if !ok {
+		return nil
+	}
+	return log
+}
+
+func WithValue(ctx context.Context, log EventReceiver) context.Context {
+	return context.WithValue(ctx, eventKey{}, log)
 }
 
 type kvs map[string]string
