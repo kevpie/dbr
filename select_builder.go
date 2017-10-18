@@ -59,7 +59,7 @@ func (b *SelectBuilder) Load(value interface{}) (int, error) {
 }
 
 func (b *SelectBuilder) LoadContext(ctx context.Context, value interface{}) (int, error) {
-	return query(ctx, b.runner, b.EventReceiver, b, b.Dialect, value)
+	return query(ctx, b.runner, b.EventReceiver, []Builder{b}, b.Dialect, value)
 }
 
 func (b *SelectBuilder) LoadStruct(value interface{}) error {
@@ -67,7 +67,7 @@ func (b *SelectBuilder) LoadStruct(value interface{}) error {
 }
 
 func (b *SelectBuilder) LoadStructContext(ctx context.Context, value interface{}) error {
-	count, err := query(ctx, b.runner, b.EventReceiver, b, b.Dialect, value)
+	count, err := query(ctx, b.runner, b.EventReceiver, []Builder{b}, b.Dialect, value)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (b *SelectBuilder) LoadStructs(value interface{}) (int, error) {
 }
 
 func (b *SelectBuilder) LoadStructsContext(ctx context.Context, value interface{}) (int, error) {
-	return query(ctx, b.runner, b.EventReceiver, b, b.Dialect, value)
+	return query(ctx, b.runner, b.EventReceiver, []Builder{b}, b.Dialect, value)
 }
 
 func (b *SelectBuilder) LoadValue(value interface{}) error {
@@ -90,7 +90,7 @@ func (b *SelectBuilder) LoadValue(value interface{}) error {
 }
 
 func (b *SelectBuilder) LoadValueContext(ctx context.Context, value interface{}) error {
-	count, err := query(ctx, b.runner, b.EventReceiver, b, b.Dialect, value)
+	count, err := query(ctx, b.runner, b.EventReceiver, []Builder{b}, b.Dialect, value)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (b *SelectBuilder) LoadValues(value interface{}) (int, error) {
 }
 
 func (b *SelectBuilder) LoadValuesContext(ctx context.Context, value interface{}) (int, error) {
-	return query(ctx, b.runner, b.EventReceiver, b, b.Dialect, value)
+	return query(ctx, b.runner, b.EventReceiver, []Builder{b}, b.Dialect, value)
 }
 
 func (b *SelectBuilder) Join(table, on interface{}) *SelectBuilder {
