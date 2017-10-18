@@ -1,11 +1,11 @@
 package dbr
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
 
-	"context"
 	"github.com/gocraft/dbr/dialect"
 )
 
@@ -123,7 +123,12 @@ func exec(ctx context.Context, runner runner, log EventReceiver, builder Builder
 	return result, nil
 }
 
-func query(ctx context.Context, runner runner, log EventReceiver, builder Builder, d Dialect, dest interface{}) (int, error) {
+func query(ctx context.Context, runner runner, log EventReceiver, builders []Builder, d Dialect, dest ...interface{}) (int, error) {
+	var (
+		finalQuery       string
+		values           []interface{}
+		commandSeparator string
+	)
 	ctxLog := FromContext(ctx)
 	if ctxLog == nil {
 		ctx = WithValue(ctx, log)
@@ -131,38 +136,52 @@ func query(ctx context.Context, runner runner, log EventReceiver, builder Builde
 		log = ctxLog
 	}
 
-	i := interpolator{
-		Buffer:       NewBuffer(),
-		Dialect:      d,
-		IgnoreBinary: true,
+	if len(builders) > 1 {
+		commandSeparator = ";"
 	}
-	err := i.interpolate(placeholder, []interface{}{builder})
-	query, value := i.String(), i.Value()
-	if err != nil {
-		return 0, log.EventErrKv("dbr.select.interpolate", err, kvs{
-			"sql":  query,
-			"args": fmt.Sprint(value),
-		})
-	}
+	for _, b := range builders {
+		i := interpolator{
+			Buffer:       NewBuffer(),
+			Dialect:      d,
+			IgnoreBinary: true,
+		}
+		err := i.interpolate(placeholder, []interface{}{b})
+		query, value := i.String(), i.Value()
+		if err != nil {
+			return 0, log.EventErrKv("dbr.select.interpolate", err, kvs{
+				"sql":  query,
+				"args": fmt.Sprint(value),
+			})
+		}
 
+		finalQuery += query + commandSeparator
+		values = append(values, value...)
+	}
 	startTime := time.Now()
 	defer func() {
 		log.TimingKv("dbr.select", time.Since(startTime).Nanoseconds(), kvs{
-			"sql": query,
+			"sql": finalQuery,
 		})
 	}()
 
-	rows, err := runner.QueryContext(ctx, query, value...)
+	rows, err := runner.QueryContext(ctx, finalQuery, values...)
 	if err != nil {
 		return 0, log.EventErrKv("dbr.select.load.query", err, kvs{
-			"sql": query,
+			"sql": finalQuery,
 		})
 	}
-	count, err := Load(rows, dest)
-	if err != nil {
-		return 0, log.EventErrKv("dbr.select.load.scan", err, kvs{
-			"sql": query,
-		})
+	defer rows.Close()
+	hasData := true
+	lenDest := len(dest)
+	for idx := 0; idx < lenDest && hasData; idx++ {
+		_, err := Load(rows, dest[idx])
+		if err != nil {
+			return 0, log.EventErrKv("dbr.select.load.scan", err, kvs{
+				"sql": finalQuery,
+			})
+		}
+		hasData = rows.NextResultSet()
 	}
-	return count, nil
+
+	return 0, nil
 }
